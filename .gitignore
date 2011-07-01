@@ -1,0 +1,6 @@
+.idea/*
+*.egg-info
+*.egg
+*.pyo
+*.pyc
+
