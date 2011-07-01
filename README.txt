@@ -42,8 +42,6 @@ set_common_template_args(dict)
     - use this to add stuff that will always be available in all of your wizard created
       templates
 
-
-
 A Step class is just an object that must the following methods
 
 display

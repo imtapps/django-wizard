@@ -7,45 +7,7 @@ from django.core import urlresolvers
 from django.template import Template
 from django.contrib import messages
 from django.contrib.auth.models import User
-from wizard import forms
-
-class MoniterProxy(object):
-    "this proxy will allow the tests to see what methods are called"
-    def __init__(self, instance):
-        "proxy some object instance"
-        self.instance = instance
-        self.calls = []
-
-    def __getattribute__(self, attr):
-        """
-        fake the proxy so it looks like an instance of the same type as the object it wraps
-        """
-        if attr == '__class__':
-            return self.instance.__class__
-        else:
-            return object.__getattribute__(self, attr)
-
-    def __getattr__(self, attr):
-        "wrap attribute access and build a list of which attributes are accessed"
-        self.calls.append(attr)
-        return getattr(self.instance, attr)
-
-class MockRequest(object):
-    "this is a fake HttpRequest object to use in testing"
-    POST = {}
-    REQUEST = {}
-    def __init__(self, method):
-        "the method of the HttpRequest must be passed into the constructor"
-        self.method = method
-        self.path = '/'
-
-class MockPostErrorWizardStep(forms.WizardStep):
-    """
-    this class is a fake wizard step that will raise an error when posted to
-    """
-    def save(self):
-        "fake a post call and raise an error"
-        raise forms.SaveStepException("mock get error")
+import wizard
 
 class SampleStep(object):
     "sample WizardStemp implementation"
@@ -118,14 +80,11 @@ class TestStepFive(MoniterStep):
 
 def get_class_with_missing_prereq(step, request=None, message=None):
     "return a class that can be used that has a prereq to the passed in step"
-    class PrereqClass(MoniterStep):
-        "dummy step class"
-        def prereq(self):
-            "prereq method that will record that prereq is called and raise an exception"
+    my_step = MagicMock()
+    my_step.prereq.side_effect = wizard.PrereqMissing(step, request, message)
+    my_step.template.return_value = Template("")
+    return my_step
 
-            self.calls.append('prereq')
-            raise forms.PrereqMissing(step, request, message)
-    return PrereqClass
 
 class TestWizard(test.TestCase):
     """
@@ -147,14 +106,16 @@ class TestWizard(test.TestCase):
                 ('fifth', TestStepFive),
         ]
 
-        self.wizard = forms.Wizard('test:test1', self.steps)
-        self.wizard.set_step_init_args(MockRequest("GET"))
+        self.wizard = wizard.Wizard('test:test1', self.steps)
+        self.mock_request = MagicMock()
+        self.mock_request.method = 'GET'
+        self.wizard.set_step_init_args(self.mock_request)
 
     def test_should_instantiate_step_classes_as_needed(self):
         """
         make sure that the wizard instantiates only the classes that are requested
         """
-        self.wizard.handle_request(MockRequest("GET"), 'fourth')
+        self.wizard.handle_request(self.mock_request, 'fourth')
 
         self.assertEqual('type', type(self.wizard.steps['first']).__name__, self.wizard.steps['fourth'])
         self.assertEqual('type', type(self.wizard.steps['second']).__name__, self.wizard.steps['fourth'])
@@ -167,41 +128,41 @@ class TestWizard(test.TestCase):
         make sure that when the wizard intantiates a step that it passes the corrects args and kwargs to
         the constructor
         """
-        wizard = forms.Wizard('test:test2', self.steps)
-        wizard.set_step_init_args('asdf', 9999, abc=123, xyz=987)
-        wizard.handle_request(MockRequest("GET"), 'fifth')
-        self.assertEqual(('asdf', 9999), wizard.steps['fifth'].args)
-        self.assertEqual({'abc':123, 'xyz':987}, wizard.steps['fifth'].kwargs)
+        my_wizard = wizard.Wizard('test:test2', self.steps)
+        my_wizard.set_step_init_args('asdf', 9999, abc=123, xyz=987)
+        my_wizard.handle_request(self.mock_request, 'fifth')
+        self.assertEqual(('asdf', 9999), my_wizard.steps['fifth'].args)
+        self.assertEqual({'abc':123, 'xyz':987}, my_wizard.steps['fifth'].kwargs)
 
     def test_should_set_step_key_on_step_instance(self):
         step_key = 'fifth'
 
-        wizard = forms.Wizard('test:test2', self.steps)
-        wizard.set_step_init_args('asdf', 9999, abc=123, xyz=987)
-        wizard.handle_request(MockRequest("GET"), step_key)
+        my_wizard = wizard.Wizard('test:test2', self.steps)
+        my_wizard.set_step_init_args('asdf', 9999, abc=123, xyz=987)
+        my_wizard.handle_request(self.mock_request, step_key)
 
-        step = wizard.steps[step_key]
+        step = my_wizard.steps[step_key]
         self.assertEqual(step_key, step._key)
 
     def test_should_set_wizard_instance_on_step_instance(self):
         step_key = 'fifth'
 
-        wizard = forms.Wizard('test:test2', self.steps)
-        wizard.set_step_init_args('asdf', 9999, abc=123, xyz=987)
-        wizard.handle_request(MockRequest("GET"), step_key)
+        my_wizard = wizard.Wizard('test:test2', self.steps)
+        my_wizard.set_step_init_args('asdf', 9999, abc=123, xyz=987)
+        my_wizard.handle_request(self.mock_request, step_key)
 
-        step = wizard.steps[step_key]
-        self.assertEqual(wizard, step._wizard)
+        step = my_wizard.steps[step_key]
+        self.assertEqual(my_wizard, step._wizard)
 
     def test_should_set_current_step_on_instance(self):
         current_step = 'fifth'
 
-        wizard = forms.Wizard('test:test2', self.steps)
-        wizard._current_step = current_step
-        wizard.set_step_init_args('asdf', 9999, abc=123, xyz=987)
-        wizard.handle_request(MockRequest("GET"), current_step)
+        my_wizard = wizard.Wizard('test:test2', self.steps)
+        my_wizard._current_step = current_step
+        my_wizard.set_step_init_args('asdf', 9999, abc=123, xyz=987)
+        my_wizard.handle_request(self.mock_request, current_step)
 
-        self.assertEqual(current_step, wizard.steps[current_step]._current_step)
+        self.assertEqual(current_step, my_wizard.steps[current_step]._current_step)
 
     def test_should_be_able_to_get_test_url(self):
         """
@@ -215,17 +176,18 @@ class TestWizard(test.TestCase):
         """
         the root url of the wizard should be able to determine what the first step is
         """
-        response = self.wizard.handle_request(MockRequest("GET"))
+        response = self.wizard.handle_request(self.mock_request)
         self.assertEqual(response['Location'], '/test/first')
         self.assertEqual(response.status_code, 302)
 
-    @patch('wizard.forms.Wizard.navigate', Mock())
+    @patch('wizard.Wizard.navigate', Mock())
     def test_should_save_current_step(self):
         """
         requesting step 0 of the wizard with a POST request should call the post method of the wizard
         as well as the post method of the first step in the wizard
         """
-        self.wizard.handle_request(MockRequest('POST'), 'first')
+        self.mock_request.method = 'POST'
+        self.wizard.handle_request(self.mock_request, 'first')
         self.assertTrue('save' in self.wizard.steps['first'].calls, str(self.wizard.steps['first'].calls))
 
     def test_should_display_current_step(self):
@@ -233,16 +195,17 @@ class TestWizard(test.TestCase):
         requesting step 0 of the wizard with a GET request should call the get method of the wizard
         as well as the get method of the first step in the wizard
         """
-        self.wizard.handle_request(MockRequest('GET'), 'first')
+        self.wizard.handle_request(self.mock_request, 'first')
         self.assertTrue('display' in self.wizard.steps['first'].calls, str(self.wizard.steps['first'].calls))
 
-    @patch('wizard.forms.Wizard.navigate', Mock())
+    @patch('wizard.Wizard.navigate', Mock())
     def test_should_call_save_for_http_posts(self):
         """
         POSTing to the wizard should call the post method of the appropriate step, in this case, the first one
         """
         self.wizard.initialize_steps()
-        self.wizard.post(MockRequest("POST"), 'first')
+        self.mock_request.method = 'POST'
+        self.wizard.post(self.mock_request, 'first')
 
         self.assertTrue('save' in self.wizard.steps['first'].calls, str(self.wizard.steps['first'].calls))
 
@@ -250,23 +213,22 @@ class TestWizard(test.TestCase):
         """
         GETing the wizard should call the get method of the appropriate step, in this case, the first one
         """
-        self.wizard.handle_request(MockRequest("GET"), 'first')
+        self.wizard.handle_request(self.mock_request, 'first')
         self.assertTrue('display' in self.wizard.steps['first'].calls, str(self.wizard.steps['first'].calls))
 
     def test_should_get_wizard_back(self):
         """
         passing an HttpRequest into the wizard's __call__ should return an HttpResponse with a 200 status code
         """
-        request = MockRequest("GET")
-        response = self.wizard.handle_request(request, 'first')
+        response = self.wizard.handle_request(self.mock_request, 'first')
         self.assertEqual(response.status_code, 200)
 
     def test_should_redirect_after_post(self):
         """
         after a post, a redirect should be returned to GET the next step
         """
-        request = MockRequest("POST")
-        response = self.wizard.handle_request(request, 'first')
+        self.mock_request.method = 'POST'
+        response = self.wizard.handle_request(self.mock_request, 'first')
         self.assertEqual(response.status_code, 302)
 
     def test_should_not_redirect_on_post_after_error(self):
@@ -274,9 +236,11 @@ class TestWizard(test.TestCase):
         when a post encounters an error, a redirect will not be issued, instead the same step will
         be rendered again
         """
-        request = MockRequest("POST")
-        self.steps[0] = ('first', MockPostErrorWizardStep())
-        response = self.wizard.handle_request(request, 'first')
+        self.mock_request.method = 'POST'
+        mock_step = MagicMock()
+        mock_step.save.side_effect = wizard.SaveStepException("mock get error")
+        self.steps[0] = ('first', mock_step)
+        response = self.wizard.handle_request(self.mock_request, 'first')
         self.assertEqual(response.status_code, 200)
 
     def test_should_return_same_step_after_save_error(self):
@@ -284,12 +248,16 @@ class TestWizard(test.TestCase):
         when a post encounters an error, the same step will be rendered and returned by the wizard
         and the wizard step will not advance.
         """
-        request = MockRequest("POST")
-        self.steps[0] = ('first', MoniterProxy(MockPostErrorWizardStep()))
-        response = self.wizard.handle_request(request, 'first')
+        self.mock_request.method = 'POST'
+        mock_step = MagicMock()
+        mock_step.save.side_effect = wizard.SaveStepException
+        self.steps[0] = ('first', mock_step)
+        response = self.wizard.handle_request(self.mock_request, 'first')
         self.assertEqual(response.status_code, 200)
-        self.assertTrue('save' in self.wizard.steps['first'].calls, str(self.wizard.steps['first'].calls))
-        self.assertTrue('display' in self.wizard.steps['first'].calls, str(self.wizard.steps['first'].calls))
+        mock_step.save.assert_called_once_with()
+        mock_step.display.assert_called_once_with()
+        #self.assertTrue('save' in self.wizard.steps['first'].calls, str(self.wizard.steps['first'].calls))
+        #self.assertTrue('display' in self.wizard.steps['first'].calls, str(self.wizard.steps['first'].calls))
 
     def test_should_include_current_step_in_response(self):
         """
@@ -305,7 +273,7 @@ class TestWizard(test.TestCase):
         this test should mimic a url like like
         http://localhost/wizard/
         """
-        response = self.wizard.handle_request(MockRequest('GET'), 'first')
+        response = self.wizard.handle_request(self.mock_request, 'first')
         self.assertEqual(200, response.status_code)
 
     def test_should_be_able_to_pass_step_to_url(self):
@@ -313,7 +281,7 @@ class TestWizard(test.TestCase):
         this test should mimic a url like like
         http://localhost/wizard/0/
         """
-        response = self.wizard.handle_request(MockRequest('GET'), 'first')
+        response = self.wizard.handle_request(self.mock_request, 'first')
         self.assertEqual(200, response.status_code)
 
     def test_should_raise_404_when_pass_invalid_step_to_url(self):
@@ -321,10 +289,13 @@ class TestWizard(test.TestCase):
         this test should mimic a url like like
         http://localhost/wizard/999/
         """
-        self.assertRaises(http.Http404, self.wizard.handle_request, MockRequest('GET'), 'xxx')
+        self.assertRaises(http.Http404, self.wizard.handle_request, self.mock_request, 'xxx')
 
     def test_should_remain_on_same_step_when_no_action_present(self):
-        response = self.wizard.handle_request(MockRequest('POST'), 'first')
+        self.mock_request.location = '/'
+        self.mock_request.REQUEST = {}
+        self.mock_request.method = 'POST'
+        response = self.wizard.handle_request(self.mock_request, 'first')
         self.assertEqual(response['Location'], '/test/first')
 
     def test_should_be_able_to_get_any_step_by_request_in_any_order(self):
@@ -333,11 +304,10 @@ class TestWizard(test.TestCase):
         the step_number's listed below where X is the step_number
         http://localhost/wizard/X/
         """
-        request = MockRequest("GET")
-        wiz = forms.Wizard('test:test1', self.steps)
-        wiz.set_step_init_args(request)
+        wiz = wizard.Wizard('test:test1', self.steps)
+        wiz.set_step_init_args(self.mock_request)
         for step in ['fourth', 'third', 'first', 'fifth', 'second']:
-            response = wiz.handle_request(request, step)
+            response = wiz.handle_request(self.mock_request, step)
             self.assertEqual(200, response.status_code)
 
     def test_should_redirect_on_prereq_exception(self):
@@ -347,7 +317,7 @@ class TestWizard(test.TestCase):
         """
         self.steps[3] = ('fourth', get_class_with_missing_prereq('third'))
 
-        response = self.wizard.handle_request(MockRequest('GET'), 'fourth')
+        response = self.wizard.handle_request(self.mock_request, 'fourth')
         self.assertEqual(302, response.status_code)
         self.assertEqual(response['Location'], '/test/third')
 
@@ -355,7 +325,7 @@ class TestWizard(test.TestCase):
         """
         make sure that the template method is called
         """
-        self.wizard.handle_request(MockRequest("GET"), 'first')
+        self.wizard.handle_request(self.mock_request, 'first')
         self.assertTrue('template' in self.wizard.steps['first'].calls, str(self.wizard.steps['first'].calls))
 
     def test_should_handle_nested_prereq_without_multiple_redirects(self):
@@ -369,7 +339,7 @@ class TestWizard(test.TestCase):
 
         self.steps[3] = ('fourth', get_class_with_missing_prereq('third'))
         self.steps[2] = ('third', get_class_with_missing_prereq('second'))
-        response = self.wizard.handle_request(MockRequest('GET'), 'fourth')
+        response = self.wizard.handle_request(self.mock_request, 'fourth')
         self.assertEqual(302, response.status_code)
         self.assertEqual(response['Location'], '/test/second')
 
@@ -378,48 +348,51 @@ class TestWizard(test.TestCase):
         make sure that the response for the concrete step matches what the template should render
         """
         self.steps[0] = ('first', SampleStep())
-        response = self.wizard.handle_request(MockRequest("GET"), 'first')
+        response = self.wizard.handle_request(self.mock_request, 'first')
         self.assertEqual(200, response.status_code)
         self.assertEqual("""
             Step: first
             <ul><li>1</li><li>2</li><li>3</li><li>4</li><li>5</li><li>6</li><li>7</li><li>8</li><li>9</li></ul>
             """.replace(' ', ''), str(response.content).replace(' ', ''))
 
-    def test_should_add_message_when_redirected_by_missing_prereqs(self):
+    @patch('django.contrib.messages.add_message')
+    def test_should_add_message_when_redirected_by_missing_prereqs(self, add_message):
         """
         when a missing prereq causes a step to redirect to the prereq step, a message should
         be added to the django messaging system to alert the user as to why they are not seeing
         the page they requested.  The message added to the messaging system should be the exact message
         added to the PrereqMissing exception
         """
-        request = MockRequest("GET")
         message_text = "This is the reason why..."
+        step = Mock()
+        step.prereq.side_effect = wizard.PrereqMissing('first', self.mock_request, message_text)
+        self.steps[3] = ('fourth', step)
+        self.mock_request.user = User(id=1)#mock an 'authenticated' user object
 
-        self.steps[3] = ('fourth', get_class_with_missing_prereq('first', request, message_text))
+        self.wizard.handle_request(self.mock_request, 'fourth')
+        add_message.assert_called_once_with(self.mock_request, messages.ERROR, message_text)
 
-        request.user = User(id=1)#mock an 'authenticated' user object
-
-        self.wizard.handle_request(request, 'fourth')
-        message_list = list(messages.get_messages(request))
-        self.assertEqual([message_text], message_list)
-
-    def test_should_add_multiple_messages_when_redirected_by_missing_prereqs_multiple_times(self):
+    @patch('django.contrib.messages.add_message')
+    def test_should_add_multiple_messages_when_redirected_by_missing_prereqs_multiple_times(self, add_message):
         """
         when a missing prereq causes a step to redirect to the prereq step, a message should
         be added to the django messaging system to alert the user as to why they are not seeing
         the page they requested.  The message added to the messaging system should be the exact message
         added to the PrereqMissing exception
         """
-        request = MockRequest("GET")
-        message_text = ["This is the first reason why...", "This is the second..."]
-        self.steps[3] = ('fourth', get_class_with_missing_prereq('third', request, message_text[0]))
-        self.steps[2] = ('third', get_class_with_missing_prereq('second', request, message_text[1]))
+        first_message = "This is the first reason why..."
+        second_message = "This is the second..."
+        message_text = [first_message, second_message]
+        self.steps[3] = ('fourth', get_class_with_missing_prereq('third', self.mock_request, message_text[0]))
+        self.steps[2] = ('third', get_class_with_missing_prereq('second', self.mock_request, message_text[1]))
 
-        request.user = User(id=1)#mock an 'authenticated' user object
+        self.mock_request.user = User(id=1)#mock an 'authenticated' user object
 
-        self.wizard.handle_request(request, 'fourth')
-        message_list = list(messages.get_messages(request))
-        self.assertEqual(message_text, message_list, str(message_list) + " is not " + str(message_text))
+        self.wizard.handle_request(self.mock_request, 'fourth')
+        self.assertEqual([
+            ((self.mock_request, messages.ERROR, first_message), {}),
+            ((self.mock_request, messages.ERROR, second_message), {}),
+        ], add_message.call_args_list)
 
     def test_should_be_able_to_access_the_wizard_object_from_a_template(self):
         """
@@ -439,7 +412,7 @@ class TestWizard(test.TestCase):
         by raising a PrereqMissing exception and passing a future step name into it
         """
         self.steps[2] = ('third', get_class_with_missing_prereq('fifth'))
-        response = self.wizard.handle_request(MockRequest("GET"), 'third')
+        response = self.wizard.handle_request(self.mock_request, 'third')
         self.assertEqual(302, response.status_code)
         self.assertEqual('/test/fifth', response['Location'])
 
@@ -448,9 +421,10 @@ class TestWizard(test.TestCase):
         if you're capturing arguments or keyword arguments in your url patterns (besides 'step' used by the wizard)
         then you should be able to pass thouse through to the wizard when it does the url lookups
         """
-        wizard = forms.Wizard('test:test2', self.steps)
-        wizard.set_redirect_args(asdf=1234)
-        response = wizard.handle_request(MockRequest('POST'), 'first')
+        self.mock_request.method = 'POST'
+        my_wizard = wizard.Wizard('test:test2', self.steps)
+        my_wizard.set_redirect_args(asdf=1234)
+        response = my_wizard.handle_request(self.mock_request, 'first')
         self.assertEqual(response['Location'], '/test/1234/first')
 
     def test_should_fail_with_invalid_kwargs_for_redirect_args(self):
@@ -458,17 +432,19 @@ class TestWizard(test.TestCase):
         make sure that the wizard doesn't make any assumptions about redirecting urls - if the url that the
         wizard is told to build, doesn't exist, it should fail
         """
+        self.mock_request.method = 'POST'
         self.wizard.set_redirect_args(xxxx=9999)
-        self.assertRaises(urlresolvers.NoReverseMatch, self.wizard.handle_request, MockRequest('POST'), 'first')
+        self.assertRaises(urlresolvers.NoReverseMatch, self.wizard.handle_request, self.mock_request, 'first')
 
     def test_should_allow_url_args_to_be_passed_positionally(self):
         """
         the wizard should also automatically add a step as the last positional argument as well as accepting the
         step as a keyword argument
         """
-        wiz = forms.Wizard('test:test3', self.steps)
+        self.mock_request.method = 'POST'
+        wiz = wizard.Wizard('test:test3', self.steps)
         wiz.set_redirect_args(1234, 'asdf')
-        response = wiz.handle_request(MockRequest("POST"), 'first')
+        response = wiz.handle_request(self.mock_request, 'first')
         self.assertEqual(response['Location'], '/test/1234/asdf/first')
 
     def test_should_pass_template_args_through_wizard(self):
@@ -485,7 +461,7 @@ class TestWizard(test.TestCase):
 
         self.steps[0] = ('first', DummyTestStep)
         self.wizard.set_common_template_args({'sample':123, 'other':'asdf'})
-        response = self.wizard.handle_request(MockRequest("GET"), 'first')
+        response = self.wizard.handle_request(self.mock_request, 'first')
         self.assertEqual(200, response.status_code)
         self.assertEqual("""123asdf""".replace(' ', ''), str(response.content).replace(' ', ''))
 
@@ -493,11 +469,10 @@ class TestWizard(test.TestCase):
         """
         the wizard should allow you to "save" a step and not advance to the next step
         """
+        self.mock_request.method = 'POST'
+        self.mock_request.POST = {'wizard_save':'XXXXXXXXXXXXXXXXXXXX'}
 
-        request = MockRequest('POST')
-        request.POST = {'wizard_save':'XXXXXXXXXXXXXXXXXXXX'}
-
-        response = self.wizard.handle_request(request)
+        response = self.wizard.handle_request(self.mock_request)
         self.assertEqual(302, response.status_code)
         self.assertEqual(response['Location'], '/test/first')
 
@@ -505,10 +480,10 @@ class TestWizard(test.TestCase):
         """
         the wizard should allow you to "continue" to the next step
         """
-        request = MockRequest('POST')
-        request.REQUEST = {'wizard_continue':'VVVVDSFSDFSDF SDF SDF SDF'}
+        self.mock_request.method = 'POST'
+        self.mock_request.REQUEST = {'wizard_continue':'VVVVDSFSDFSDF SDF SDF SDF'}
 
-        response = self.wizard.handle_request(request, 'first')
+        response = self.wizard.handle_request(self.mock_request, 'first')
         self.assertEqual(302, response.status_code)
         self.assertEqual(response['Location'], '/test/second')
 
@@ -516,13 +491,13 @@ class TestWizard(test.TestCase):
         """
         the wizard should allow you to "continue" to the next step
         """
-        request = MockRequest('POST')
-        request.REQUEST = {'next':'VVVVDSFSDFSDF SDF SDF SDF'}
+        self.mock_request.method = 'POST'
+        self.mock_request.REQUEST = {'next':'VVVVDSFSDFSDF SDF SDF SDF'}
 
-        wizard = forms.Wizard('test:test1', self.steps, {'next':1, 'remain':0})
-        wizard.set_step_init_args(MockRequest("GET"))
+        my_wizard = wizard.Wizard('test:test1', self.steps, {'next':1, 'remain':0})
+        my_wizard.set_step_init_args(Mock())
 
-        response = wizard.handle_request(request, 'first')
+        response = my_wizard.handle_request(self.mock_request, 'first')
         self.assertEqual(302, response.status_code)
         self.assertEqual(response['Location'], '/test/second')
 
@@ -530,13 +505,13 @@ class TestWizard(test.TestCase):
         """
         the wizard should allow you to "continue" to the next step
         """
-        request = MockRequest('POST')
-        request.POST = {'remain':'VVVVDSFSDFSDF SDF SDF SDF'}
+        self.mock_request.method = 'POST'
+        self.mock_request.POST = {'remain':'VVVVDSFSDFSDF SDF SDF SDF'}
 
-        wizard = forms.Wizard('test:test1', self.steps, {'next':1, 'remain':0})
-        wizard.set_step_init_args(request)
+        my_wizard = wizard.Wizard('test:test1', self.steps, {'next':1, 'remain':0})
+        my_wizard.set_step_init_args(self.mock_request)
 
-        response = wizard.handle_request(request)
+        response = my_wizard.handle_request(self.mock_request)
         self.assertEqual(302, response.status_code)
         self.assertEqual(response['Location'], '/test/first')
 
@@ -557,18 +532,18 @@ class TestWizard(test.TestCase):
         of the current step otherwise it will use None
         """
         TestStepFive.mimetype = "application/javascript"
-        response = self.wizard.handle_request(MockRequest("GET"), 'fifth')
+        response = self.wizard.handle_request(self.mock_request, 'fifth')
         self.assertEqual("application/javascript", response['Content-type'])
         delattr(TestStepFive, 'mimetype')
 
     def test_should_initialize_steps_in_call(self):
         self.wizard.initialize_steps = Mock(wraps=self.wizard.initialize_steps)
-        self.wizard.handle_request(MockRequest("GET"))
+        self.wizard.handle_request(self.mock_request)
         self.assertTrue(self.wizard.initialize_steps.called)
 
     def test_should_initialize_steps_in_navigate(self):
         self.wizard.initialize_steps = Mock(wraps=self.wizard.initialize_steps)
-        self.wizard.navigate(MockRequest("GET"), 'second')
+        self.wizard.navigate(self.mock_request, 'second')
         self.assertTrue(self.wizard.initialize_steps.called)
 
     def test_should_call_steps_callback_if_callable(self):
@@ -593,7 +568,8 @@ class TestWizard(test.TestCase):
         self.steps[2] = ('third', get_class_with_missing_prereq('first'))
         self.steps[3] = ('fourth', get_class_with_missing_prereq('fifth'))
         self.steps[4] = ('fifth', get_class_with_missing_prereq('first'))
-        request = MockRequest("POST")
+        self.mock_request.method = 'POST'
+        request = self.mock_request
         request.REQUEST = {'wizard_continue':True}
         response = self.wizard.handle_request(request, 'first')
         self.assertEqual(response['Location'], '/test/fifth')
@@ -612,32 +588,32 @@ class TestWizard(test.TestCase):
         self.assertEqual(steps_tuple[-1][0], step)
 
     def test_should_return_next_step_url(self):
-        wiz = forms.Wizard('test:test3', self.steps)
+        wiz = wizard.Wizard('test:test3', self.steps)
         wiz.set_redirect_args(1234, 'asdf')
-        wiz.handle_request(MockRequest("GET"), 'first')
+        wiz.handle_request(self.mock_request, 'first')
         self.assertEqual(wiz.next_step_url(), '/test/1234/asdf/second')
 
     def test_should_return_previous_step_url(self):
-        wiz = forms.Wizard('test:test3', self.steps)
+        wiz = wizard.Wizard('test:test3', self.steps)
         wiz.set_redirect_args(1234, 'asdf')
-        wiz.handle_request(MockRequest("GET"), 'second')
+        wiz.handle_request(self.mock_request, 'second')
         self.assertEqual(wiz.prev_step_url(), '/test/1234/asdf/first')
 
     def test_should_skip_steps_with_missing_prereqs_when_moving_forward(self):
         self.steps[1] = ('second', get_class_with_missing_prereq('first'))
-        wiz = forms.Wizard('test:test3', self.steps)
+        wiz = wizard.Wizard('test:test3', self.steps)
         wiz.set_redirect_args(1234, 'asdf')
-        wiz.handle_request(MockRequest("GET"), 'first')
+        wiz.handle_request(self.mock_request, 'first')
         self.assertEqual(wiz.next_step_url(), '/test/1234/asdf/third')
 
     def test_should_return_none_when_previous_step_has_not_changed(self):
-        wiz = forms.Wizard('test:test3', self.steps)
+        wiz = wizard.Wizard('test:test3', self.steps)
         wiz.set_redirect_args(1234, 'asdf')
-        wiz.handle_request(MockRequest("GET"), 'first')
+        wiz.handle_request(self.mock_request, 'first')
         self.assertEqual(wiz.prev_step_url(), None)
 
     def test_should_return_none_when_next_step_has_not_changed(self):
-        wiz = forms.Wizard('test:test3', self.steps)
+        wiz = wizard.Wizard('test:test3', self.steps)
         wiz.set_redirect_args(1234, 'asdf')
-        wiz.handle_request(MockRequest("GET"), 'fifth')
+        wiz.handle_request(self.mock_request, 'fifth')
         self.assertEqual(wiz.next_step_url(), None)

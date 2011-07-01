@@ -1,6 +1,4 @@
-
 from setuptools import setup
-from wizard import VERSION
 
 REQUIREMENTS = [
     'django',
@@ -12,7 +10,7 @@ TEST_REQUIREMENTS = REQUIREMENTS + [
 
 setup(
     name="django-wizard",
-    version=VERSION,
+    version='0.1.1',
     author="Matthew J. Morrison",
     author_email="mattjmorrison@mattjmorrison.com",
     description="A wizard that helps to control page flow.",
