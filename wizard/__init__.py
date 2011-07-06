@@ -4,14 +4,14 @@ these are the classes that make form wizards work
 import inspect
 from django import http
 from django.core import urlresolvers
-from django.template import RequestContext, Template
+from django.template import RequestContext
 from django.contrib import messages
 
 from wizard import signals
 
 __all__ = ('PrereqMissing', 'SaveStepException', 'Wizard')
 
-__version__ = '0.1.1'
+__version__ = '0.1.3'
 
 class PrereqMissing(Exception):
     "this is an exception that a WizardStep can raise in the event that a pervious step must first be completed"
