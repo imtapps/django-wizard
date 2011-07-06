@@ -7,6 +7,8 @@ from django.core import urlresolvers
 from django.template import RequestContext, Template
 from django.contrib import messages
 
+from wizard import signals
+
 __all__ = ('PrereqMissing', 'SaveStepException', 'Wizard')
 
 __version__ = '0.1.1'
@@ -192,7 +194,9 @@ class Wizard(object):
 
     def post(self, request, step):
         try:
+            signals.wizard_pre_save.send(self, step_key=step)
             self.get_step_object_by_key(step).save()
+            signals.wizard_post_save.send(self, step_key=step)
         except SaveStepException:
             return self.render(request, self.do_display(step), step)
         else:
@@ -251,7 +255,9 @@ class Wizard(object):
 
     def do_display(self, step):
         step_object = self.get_step_object_by_key(step)
+        signals.wizard_pre_display.send(self, step_key=step)
         data = step_object.display() or {}
+        signals.wizard_post_display.send(self, step_key=step)
         return self.add_wizard_data_to_template(data, step)
 
     def add_wizard_data_to_template(self, data, step):

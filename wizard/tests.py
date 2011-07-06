@@ -1,5 +1,5 @@
 "Tests for the form wizard"
-from mock import Mock, MagicMock, patch
+import mock
 
 from django import test
 from django import http
@@ -80,7 +80,7 @@ class TestStepFive(MoniterStep):
 
 def get_class_with_missing_prereq(step, request=None, message=None):
     "return a class that can be used that has a prereq to the passed in step"
-    my_step = MagicMock()
+    my_step = mock.MagicMock()
     my_step.prereq.side_effect = wizard.PrereqMissing(step, request, message)
     my_step.template.return_value = Template("")
     return my_step
@@ -107,7 +107,7 @@ class TestWizard(test.TestCase):
         ]
 
         self.wizard = wizard.Wizard('test:test1', self.steps)
-        self.mock_request = MagicMock()
+        self.mock_request = mock.MagicMock()
         self.mock_request.method = 'GET'
         self.wizard.set_step_init_args(self.mock_request)
 
@@ -180,7 +180,7 @@ class TestWizard(test.TestCase):
         self.assertEqual(response['Location'], '/test/first')
         self.assertEqual(response.status_code, 302)
 
-    @patch('wizard.Wizard.navigate', Mock())
+    @mock.patch('wizard.Wizard.navigate', mock.Mock())
     def test_should_save_current_step(self):
         """
         requesting step 0 of the wizard with a POST request should call the post method of the wizard
@@ -198,7 +198,7 @@ class TestWizard(test.TestCase):
         self.wizard.handle_request(self.mock_request, 'first')
         self.assertTrue('display' in self.wizard.steps['first'].calls, str(self.wizard.steps['first'].calls))
 
-    @patch('wizard.Wizard.navigate', Mock())
+    @mock.patch('wizard.Wizard.navigate', mock.Mock())
     def test_should_call_save_for_http_posts(self):
         """
         POSTing to the wizard should call the post method of the appropriate step, in this case, the first one
@@ -237,7 +237,7 @@ class TestWizard(test.TestCase):
         be rendered again
         """
         self.mock_request.method = 'POST'
-        mock_step = MagicMock()
+        mock_step = mock.MagicMock()
         mock_step.save.side_effect = wizard.SaveStepException("mock get error")
         self.steps[0] = ('first', mock_step)
         response = self.wizard.handle_request(self.mock_request, 'first')
@@ -249,7 +249,7 @@ class TestWizard(test.TestCase):
         and the wizard step will not advance.
         """
         self.mock_request.method = 'POST'
-        mock_step = MagicMock()
+        mock_step = mock.MagicMock()
         mock_step.save.side_effect = wizard.SaveStepException
         self.steps[0] = ('first', mock_step)
         response = self.wizard.handle_request(self.mock_request, 'first')
@@ -355,7 +355,7 @@ class TestWizard(test.TestCase):
             <ul><li>1</li><li>2</li><li>3</li><li>4</li><li>5</li><li>6</li><li>7</li><li>8</li><li>9</li></ul>
             """.replace(' ', ''), str(response.content).replace(' ', ''))
 
-    @patch('django.contrib.messages.add_message')
+    @mock.patch('django.contrib.messages.add_message')
     def test_should_add_message_when_redirected_by_missing_prereqs(self, add_message):
         """
         when a missing prereq causes a step to redirect to the prereq step, a message should
@@ -364,7 +364,7 @@ class TestWizard(test.TestCase):
         added to the PrereqMissing exception
         """
         message_text = "This is the reason why..."
-        step = Mock()
+        step = mock.Mock()
         step.prereq.side_effect = wizard.PrereqMissing('first', self.mock_request, message_text)
         self.steps[3] = ('fourth', step)
         self.mock_request.user = User(id=1)#mock an 'authenticated' user object
@@ -372,7 +372,7 @@ class TestWizard(test.TestCase):
         self.wizard.handle_request(self.mock_request, 'fourth')
         add_message.assert_called_once_with(self.mock_request, messages.ERROR, message_text)
 
-    @patch('django.contrib.messages.add_message')
+    @mock.patch('django.contrib.messages.add_message')
     def test_should_add_multiple_messages_when_redirected_by_missing_prereqs_multiple_times(self, add_message):
         """
         when a missing prereq causes a step to redirect to the prereq step, a message should
@@ -399,7 +399,7 @@ class TestWizard(test.TestCase):
         the wizard should add itself to the dictionary of data that is passed to the template
         this is useful for dynamically building navigation links
         """
-        request = Mock()
+        request = mock.Mock()
         request.method = 'GET'
         self.wizard.initialize_steps()
         data = self.wizard.do_display('first')
@@ -495,7 +495,7 @@ class TestWizard(test.TestCase):
         self.mock_request.REQUEST = {'next':'VVVVDSFSDFSDF SDF SDF SDF'}
 
         my_wizard = wizard.Wizard('test:test1', self.steps, {'next':1, 'remain':0})
-        my_wizard.set_step_init_args(Mock())
+        my_wizard.set_step_init_args(mock.Mock())
 
         response = my_wizard.handle_request(self.mock_request, 'first')
         self.assertEqual(302, response.status_code)
@@ -537,18 +537,18 @@ class TestWizard(test.TestCase):
         delattr(TestStepFive, 'mimetype')
 
     def test_should_initialize_steps_in_call(self):
-        self.wizard.initialize_steps = Mock(wraps=self.wizard.initialize_steps)
+        self.wizard.initialize_steps = mock.Mock(wraps=self.wizard.initialize_steps)
         self.wizard.handle_request(self.mock_request)
         self.assertTrue(self.wizard.initialize_steps.called)
 
     def test_should_initialize_steps_in_navigate(self):
-        self.wizard.initialize_steps = Mock(wraps=self.wizard.initialize_steps)
+        self.wizard.initialize_steps = mock.Mock(wraps=self.wizard.initialize_steps)
         self.wizard.navigate(self.mock_request, 'second')
         self.assertTrue(self.wizard.initialize_steps.called)
 
     def test_should_call_steps_callback_if_callable(self):
-        self.wizard.steps_callback = MagicMock()
-        request = Mock()
+        self.wizard.steps_callback = mock.MagicMock()
+        request = mock.Mock()
         self.wizard.initialize_steps(request)
         self.wizard.steps_callback.assert_called_once_with(request)
 
@@ -575,13 +575,13 @@ class TestWizard(test.TestCase):
         self.assertEqual(response['Location'], '/test/fifth')
 
     def test_should_return_first_step_if_position_is_less_than_zero(self):
-        steps_tuple = ((Mock(), Mock()), (Mock(), Mock()))
+        steps_tuple = ((mock.Mock(), mock.Mock()), (mock.Mock(), mock.Mock()))
         self.wizard.steps_tuple = steps_tuple
         step = self.wizard.get_step_key_by_position(-1)
         self.assertEqual(steps_tuple[0][0], step)
 
     def test_should_return_last_step_if_position_greater_than_length_of_steps(self):
-        steps_tuple = ((Mock(), Mock()), (Mock(), Mock()))
+        steps_tuple = ((mock.Mock(), mock.Mock()), (mock.Mock(), mock.Mock()))
         self.wizard.steps_tuple = steps_tuple
         self.wizard.steps = steps_tuple
         step = self.wizard.get_step_key_by_position(len(steps_tuple) + 1)
@@ -617,3 +617,43 @@ class TestWizard(test.TestCase):
         wiz.set_redirect_args(1234, 'asdf')
         wiz.handle_request(self.mock_request, 'fifth')
         self.assertEqual(wiz.next_step_url(), None)
+
+    @mock.patch('wizard.signals.wizard_pre_save.send')
+    def test_sends_pre_save_signal_in_post(self, send_presave):
+        wiz = wizard.Wizard('test:test3', self.steps)
+        wiz.set_redirect_args(1234, 'asdf')
+        self.mock_request.method = 'POST'
+        self.mock_request.POST = {}
+        wiz.handle_request(self.mock_request, 'first')
+        send_presave.assert_called_once_with(wiz, step_key='first')
+
+    @mock.patch('wizard.signals.wizard_post_save.send')
+    def test_sends_post_save_signal_in_post(self, send_postsave):
+        wiz = wizard.Wizard('test:test3', self.steps)
+        wiz.set_redirect_args(1234, 'asdf')
+        self.mock_request.method = 'POST'
+        self.mock_request.POST = {}
+        wiz.handle_request(self.mock_request, 'first')
+        send_postsave.assert_called_once_with(wiz, step_key='first')
+
+    @mock.patch.object(TestStepOne, 'save', mock.Mock(side_effect=wizard.SaveStepException))
+    @mock.patch('wizard.signals.wizard_post_save.send')
+    def test_does_not_send_post_save_signal_in_post_on_save_step_exception(self, send_postsave):
+        wiz = wizard.Wizard('test:test3', self.steps)
+        wiz.set_redirect_args(1234, 'asdf')
+        self.mock_request.method = 'POST'
+        self.mock_request.POST = {}
+        wiz.handle_request(self.mock_request, 'first')
+        self.assertFalse(send_postsave.called)
+
+    @mock.patch('wizard.signals.wizard_pre_display.send')
+    def test_sends_pre_display_signal_in_do_display(self, send_predisplay):
+        wiz = wizard.Wizard('test:test3', self.steps)
+        wiz.handle_request(self.mock_request, 'first')
+        send_predisplay.assert_called_once_with(wiz, step_key='first')
+
+    @mock.patch('wizard.signals.wizard_post_display.send')
+    def test_sends_post_display_signal_in_do_display(self, send_postdisplay):
+        wiz = wizard.Wizard('test:test3', self.steps)
+        wiz.handle_request(self.mock_request, 'first')
+        send_postdisplay.assert_called_once_with(wiz, step_key='first')

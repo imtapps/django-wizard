@@ -3,8 +3,26 @@ from django.forms import models as model_forms
 
 from wizard import Wizard
 
+from wizard import signals
+
 from sample import models
 
+def pre_save_callback(**kwargs):
+    print "Pre Save Signal!!"
+
+def post_save_callback(**kwargs):
+    print "Post Save Signal!!"
+
+def pre_display_callback(**kwargs):
+    print "Pre Display Signal!!"
+
+def post_display_callback(**kwargs):
+    print "Post Display Signal!!"
+
+signals.wizard_pre_save.connect(pre_save_callback)
+signals.wizard_post_save.connect(post_save_callback)
+signals.wizard_pre_display.connect(pre_display_callback)
+signals.wizard_post_display.connect(post_display_callback)
 
 class WizardFormMixin(object):
     template_name = "sample/wizard_step.html"
