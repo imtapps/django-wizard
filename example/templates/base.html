@@ -1,0 +1,41 @@
+<!DOCTYPE HTML>
+<html>
+    <title>Run Rules</title>
+    <head>
+        <style type='text/css'>
+            body {background:gray;}
+            .warn {color:#b8860b;}
+            .error {color:red;}
+            .success {color:green;}
+            .pretty_list {
+                list-style-type:none;
+                border: 1px solid;
+                width:90%;
+                margin: 20px;
+                padding: 20px;
+                -webkit-border-radius: 15px;
+                -moz-border-radius: 15px;
+                background:-webkit-gradient(linear, left top, left bottom, from(#ccc), to(#fff));
+                background:-moz-linear-gradient(top,  #ccc,  #fff);
+                -webkit-box-shadow: 10px 10px 10px #333;
+                -moz-box-shadow: 10px 10px 10px #333;
+            }
+            nav {font-size: 1.2em; background-color: #a0a; border-radius: 15px; box-shadow: 10px 10px 10px #333; color: #fff; padding:  5px 10px;}
+            nav ul {list-style: none;}
+            nav li {display: inline; margin-right: 1em;}
+            nav a {color: #fff; font-weight: bold; text-decoration: none;}
+
+            form input, form select, form label {font-size: 1.5em;}
+        </style>
+    </head>
+    <body>
+        <nav>
+            <ul> |
+                {% for key, step in wizard.get_steps %}
+                    <a href="{% url wizard key %}">{{ key|capfirst }}</a> |
+                {% endfor %}
+            </ul>
+        </nav>
+        {% block content %}{% endblock %}
+    </body>
+</html>

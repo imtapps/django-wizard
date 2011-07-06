@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>{{ step_key|capfirst }} Step</h1>
+<form action="" method="post">{% csrf_token %}
+    <ul class="pretty_list">
+        {{ form.as_ul }}
+        <input type="submit" value="Submit" name="wizard_continue" />
+    </ul>
+
+</form>
+
+{% endblock %}
