@@ -11,7 +11,7 @@ from wizard import signals
 
 __all__ = ('PrereqMissing', 'SaveStepException', 'Wizard')
 
-__version__ = '0.1.3'
+__version__ = '0.1.10'
 
 class PrereqMissing(Exception):
     "this is an exception that a WizardStep can raise in the event that a pervious step must first be completed"
