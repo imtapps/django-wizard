@@ -3,7 +3,7 @@ Django wizard uses Step classes to control page flow.
 To create a wizard, you need a url route defined that is going to point to a
 view and take a step parameter, like this::
 
-        url(r'^(?P<step>[a-zA-Z]+)?$', views.NewWizard.as_view(), name='new_wizard'),
+        url(r'^(?P<step>[a-zA-Z]+)?$', views.my_view, name='new_wizard'),
 
 That view then must instantiate the wizard passing it the url name, and a list of steps.
 Then the wizard's handle_request method should be called and returned with the request
