@@ -7,7 +7,7 @@ view and take a step parameter, like this:
 
 That view then must instantiate the wizard passing it the url name, and a list of steps.
 Then the wizard's handle_request method should be called and returned with the request
-and the current step name (From the url)
+and the current step name (From the url):
 
 	def my_view(request, step):
 	    Wizard('new_wizard', [('StepOne', mysteps.StepOne), ('StepTwo', mysteps.StepTwo)])
@@ -21,10 +21,10 @@ in which scenarios.
 
 The defaults are:
 
-	wizard_save: 0
-	wizard_continue: 1
-	wizard_previous: -1
-	wizard_next: 1
+	- wizard_save: 0
+	- wizard_continue: 1
+	- wizard_previous: -1
+	- wizard_next: 1
 
 The view can also set a few additional things on the wizard:
 
@@ -61,20 +61,22 @@ The view can also set a few additional things on the wizard:
 when each step is instantiated by the wizard it is passed any url args or kwargs that
 may be present
 
-The wizard then adds the following properties
+The wizard then adds the following properties:
 
-* _key = which is the string used as the step's key
-* _wizard = is the current instance of the wizard
-* _current_step is the key of the current_step
+	* _key = which is the string used as the step's key
+	* _wizard = is the current instance of the wizard
+	* _current_step is the key of the current_step
 
-PrereqMissing is an exception that can modify the standard page flow
-    - the __init__ accepts an optional step key, a request and a message
+**Exceptionsi**:
 
-    - if the step key is provided, the wizard will redirect to that step
+	* PrereqMissing is an exception that can modify the standard page flow
+		- the __init__ accepts an optional step key, a request and a message
 
-    - if a request and message are provided it will add the message to
-      django's messaging framework
+		- if the step key is provided, the wizard will redirect to that step
 
-SaveStepException is an exception that can be raised in the save method that
-      lets the wizard know that the step could not be saved and needs to be repeated
+		- if a request and message are provided it will add the message to
+		django's messaging framework
+
+	* SaveStepException is an exception that can be raised in the save method that
+	      lets the wizard know that the step could not be saved and needs to be repeated
 
