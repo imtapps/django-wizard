@@ -10,7 +10,10 @@ Then the wizard's handle_request method should be called and returned with the r
 and the current step name (From the url):
 
         def my_view(request, step):
-            Wizard('new_wizard', [('StepOne', mysteps.StepOne), ('StepTwo', mysteps.StepTwo)])
+            Wizard('new_wizard', [
+		('StepOne', mysteps.StepOne),
+		('StepTwo', mysteps.StepTwo),
+	    ])
             return wizard.handle_request(request, step)
 
 
@@ -39,28 +42,27 @@ The view can also set a few additional things on the wizard:
             - use this to add stuff that will always be available in all of your wizard created
               templates
 
-        =A Step class is just an object that must the following methods=
+A Step class is just an object that must the following methods
 
-        * display
-            - only takes self as an argument and returns the object that should be
-              passed to django's template engine
+* display
+    - only takes self as an argument and returns the object that should be
+      passed to django's template engine
 
-        * save
-            - only takes self as an argument and returns nothing
+* save
+    - only takes self as an argument and returns nothing
 
-        * template
-            - only takes self as an argument and must return the template object to be used
-              by the wizard to render the response
+* template
+    - only takes self as an argument and must return the template object to be used
+      by the wizard to render the response
+    - IE: return loader.get_template('some_template_file.html')
 
-            IE: return loader.get_template('some_template_file.html')
+* prereq
+    - only takes self as an argument and can raise a wizard.PrereqMissing when an error occurs in the page flow
+	- the __init__ accepts an optional step key, a request and a message
 
-        * prereq
-            - only takes self as an argument and can raise a wizard.PrereqMissing when an error occurs in the page flow
-                - the __init__ accepts an optional step key, a request and a message
+	- if the step key is provided, the wizard will redirect to that step
 
-                - if the step key is provided, the wizard will redirect to that step
+	- if a request and message are provided it will add the message to django's messaging framework
 
-                - if a request and message are provided it will add the message to django's messaging framework
-
-        * SaveStepException is an exception that can be raised in the save method that the wizard know that the step could not be saved and needs to be repeated
+* SaveStepException is an exception that can be raised in the save method that the wizard know that the step could not be saved and needs to be repeated
 
