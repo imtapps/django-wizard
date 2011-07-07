@@ -1,5 +1,3 @@
-Django Wizard
-
 Django wizard uses Step classes to control page flow.
 
 To create a wizard, you need a url route defined that is going to point to a
@@ -30,35 +28,35 @@ The defaults are:
 
 The view can also set a few additional things on the wizard:
 
-* set_redirect_args(*args, **kwargs)
-    - use this to tell the wizard what it needs to privode to django's reverse function
-      when doing redirects
+	* set_redirect_args(*args, **kwargs)
+	    - use this to tell the wizard what it needs to privode to django's reverse function
+	      when doing redirects
 
-* set_step_init_args(*args, **kwargs)
-    - use this to supply additional arguments to your step class __init__'s
+	* set_step_init_args(*args, **kwargs)
+	    - use this to supply additional arguments to your step class __init__'s
 
-* set_common_template_args(dict)
-    - use this to add stuff that will always be available in all of your wizard created
-      templates
+	* set_common_template_args(dict)
+	    - use this to add stuff that will always be available in all of your wizard created
+	      templates
 
-=A Step class is just an object that must the following methods=
+	=A Step class is just an object that must the following methods=
 
-* display
-    - only takes self as an argument and returns the object that should be
-      passed to django's template engine
+	* display
+	    - only takes self as an argument and returns the object that should be
+	      passed to django's template engine
 
-* save
-    - only takes self as an argument and returns nothing
+	* save
+	    - only takes self as an argument and returns nothing
 
-* template
-    - only takes self as an argument and must return the template object to be used
-      by the wizard to render the response
+	* template
+	    - only takes self as an argument and must return the template object to be used
+	      by the wizard to render the response
 
-    IE: return loader.get_template('some_template_file.html')
+	    IE: return loader.get_template('some_template_file.html')
 
-* prereq
-    - only takes self as an argument and can raise a wizard.PrereqMissing when
-      an error occurs in the page flow
+	* prereq
+	    - only takes self as an argument and can raise a wizard.PrereqMissing when
+	      an error occurs in the page flow
 
 when each step is instantiated by the wizard it is passed any url args or kwargs that
 may be present
