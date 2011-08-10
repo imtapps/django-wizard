@@ -1,5 +1,6 @@
 "Tests for the form wizard"
 import mock
+import copy
 
 from django import test
 from django import http
@@ -110,6 +111,22 @@ class TestWizard(test.TestCase):
         self.mock_request = mock.MagicMock()
         self.mock_request.method = 'GET'
         self.wizard.set_step_init_args(self.mock_request)
+
+        self._wizard_pre_save = copy.copy(wizard.signals.wizard_pre_save.receivers)
+        self._wizard_post_save = copy.copy(wizard.signals.wizard_post_save.receivers)
+        self._wizard_pre_display = copy.copy(wizard.signals.wizard_pre_display.receivers)
+        self._wizard_post_display = copy.copy(wizard.signals.wizard_post_display.receivers)
+
+        wizard.signals.wizard_pre_save.receivers = []
+        wizard.signals.wizard_post_save.receivers = []
+        wizard.signals.wizard_pre_display.receivers = []
+        wizard.signals.wizard_post_display.receivers = []
+
+    def tearDown(self):
+        wizard.signals.wizard_pre_save.receivers = self._wizard_pre_save
+        wizard.signals.wizard_post_save.receivers = self._wizard_post_save
+        wizard.signals.wizard_pre_display.receivers = self._wizard_pre_display
+        wizard.signals.wizard_post_display.receivers = self._wizard_post_display	
 
     def test_should_instantiate_step_classes_as_needed(self):
         """
