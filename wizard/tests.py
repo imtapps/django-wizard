@@ -674,3 +674,14 @@ class TestWizard(test.TestCase):
         wiz = wizard.Wizard('test:test3', self.steps)
         wiz.handle_request(self.mock_request, 'first')
         send_postdisplay.assert_called_once_with(wiz, step_key='first')
+
+    def test_request_is_none_before_handle_request(self):
+        wiz = wizard.Wizard('test:test3', self.steps)
+        self.assertEqual(None, wiz.request)
+
+    def test_request_is_set_after_handle_request(self):
+        wiz = wizard.Wizard('test:test3', self.steps)
+        request = mock.Mock()
+        wiz.handle_request(request, 'first')
+        self.assertEqual(request, wiz.request)
+

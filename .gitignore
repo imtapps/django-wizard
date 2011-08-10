@@ -4,3 +4,6 @@
 *.pyo
 *.pyc
 
+dist/*
+build/*
+

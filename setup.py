@@ -10,7 +10,7 @@ TEST_REQUIREMENTS = REQUIREMENTS + [
 
 setup(
     name="django-wizard",
-    version='0.1.4',
+    version='0.1.11',
     author="Matthew J. Morrison",
     author_email="mattjmorrison@mattjmorrison.com",
     description="A wizard that helps to control page flow.",
