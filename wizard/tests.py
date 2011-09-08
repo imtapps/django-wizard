@@ -11,22 +11,16 @@ from django.contrib.auth.models import User
 import wizard
 
 class SampleStep(object):
-    "sample WizardStemp implementation"
     def display(self):
-        "sample get method"
         return {'items': range(1, 10)}
 
     def save(self):
-        "sample post method"
         pass
 
     def prereq(self):
-        "sample prereq method"
         pass
 
     def template(self):
-        "return the template to be used"
-
         return Template("""
         {% spaceless %}
         Step: {{step_key}}
@@ -39,48 +33,40 @@ class SampleStep(object):
         """)
 
 class MoniterStep(object):
-    "this is a dummy step that will moniter what methods are called"
     def __init__(self, *args, **kwargs):
-        "hold onto the args and create a calls that will be used to track what is done"
         self.args = args
         self.kwargs = kwargs
         self.calls = []
 
     def save(self):
-        "record that save was called"
         self.calls.append('save')
 
     def display(self):
-        "record that display was called"
         self.calls.append('display')
 
     def prereq(self):
-        "record that prereq was called"
         self.calls.append('prereq')
 
     def template(self):
-        "record that template was called and return an empty template"
         self.calls.append("template")
         return Template("")
 
 class TestStepOne(MoniterStep):
-    "dummy step"
     pass
+
 class TestStepTwo(MoniterStep):
-    "dummy step"
     pass
+
 class TestStepThree(MoniterStep):
-    "dummy step"
     pass
+
 class TestStepFour(MoniterStep):
-    "dummy step"
     pass
+
 class TestStepFive(MoniterStep):
-    "dummy step"
     pass
 
 def get_class_with_missing_prereq(step, request=None, message=None):
-    "return a class that can be used that has a prereq to the passed in step"
     my_step = mock.MagicMock()
     my_step.prereq.side_effect = wizard.PrereqMissing(step, request, message)
     my_step.template.return_value = Template("")
@@ -88,10 +74,6 @@ def get_class_with_missing_prereq(step, request=None, message=None):
 
 
 class TestWizard(test.TestCase):
-    """
-    these tests will test the functionaility of the form wizard
-    """
-
     urls = 'wizard.test_urls'
 
     def setUp(self):
@@ -580,16 +562,16 @@ class TestWizard(test.TestCase):
         self.wizard.initialize_steps()
         self.assertEqual(dict(self.steps), self.wizard.steps)
 
-    def test_should_not_infinately_recurse_but_stop_on_last_step(self):
-        self.steps[1] = ('second', get_class_with_missing_prereq('first'))
+    def test_should_reverse_direction_to_find_step_without_missing_prereq(self):
+        self.steps[1] = ('second', TestStepOne)
         self.steps[2] = ('third', get_class_with_missing_prereq('first'))
         self.steps[3] = ('fourth', get_class_with_missing_prereq('fifth'))
         self.steps[4] = ('fifth', get_class_with_missing_prereq('first'))
         self.mock_request.method = 'POST'
         request = self.mock_request
         request.REQUEST = {'wizard_continue':True}
-        response = self.wizard.handle_request(request, 'first')
-        self.assertEqual(response['Location'], '/test/fifth')
+        response = self.wizard.handle_request(request, 'third')
+        self.assertEqual(response['Location'], '/test/second')
 
     def test_should_return_first_step_if_position_is_less_than_zero(self):
         steps_tuple = ((mock.Mock(), mock.Mock()), (mock.Mock(), mock.Mock()))

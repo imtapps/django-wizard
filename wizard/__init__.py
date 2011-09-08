@@ -219,7 +219,7 @@ class Wizard(object):
                 pos = self.get_step_position(next_step)
                 new_step_key = self.get_step_key_by_position(pos + direction)
                 if new_step_key == next_step:
-                    return next_step
+                    return self.handle_prereq(new_step_key, direction * -1)
                 return self.handle_prereq(new_step_key, direction)
             else:
                 return self.handle_prereq(exception.step)
