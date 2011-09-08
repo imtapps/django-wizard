@@ -9,6 +9,8 @@ REQUIREMENTS = [
 TEST_REQUIREMENTS = [
     'mock',
     'django-jenkins',
+    'pep8',
+    'pyflakes',
 ]
 
 def do_setup():
