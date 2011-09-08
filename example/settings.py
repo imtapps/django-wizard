@@ -18,12 +18,6 @@ DATABASES = {
     }
 }
 
-MIDDLEWARE_CLASSES = (
-    'debug_toolbar.middleware.DebugToolbarMiddleware',
-)
-
-INTERNAL_IPS = ('127.0.0.1',)
-
 STATIC_URL = '/static/'
 
 ROOT_URLCONF = 'example.urls'
@@ -32,16 +26,9 @@ TEMPLATE_DIRS = (
     abspath(join(parent, 'templates')),
 )
 
-DEBUG_TOOLBAR_CONFIG = {
-#    'INTERCEPT_REDIRECTS':False
-    'EXTRA_SIGNALS':[
-        'wizard.signals.wizard_pre_save',
-        'wizard.signals.wizard_post_save',
-    ]
-}
+PROJECT_APPS = ('wizard', 'sample')
+
 INSTALLED_APPS = (
-    'wizard',
-    'sample',
-    'debug_toolbar',
-)
+    'django_jenkins',
+) + PROJECT_APPS
 
