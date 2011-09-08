@@ -42,7 +42,7 @@ The view can also set a few additional things on the wizard:
             - use this to add stuff that will always be available in all of your wizard created
               templates
 
-A Step class is just an object that must the following methods
+A Step class is just an object that must define the following methods
 
 * display
     - only takes self as an argument and returns the object that should be
