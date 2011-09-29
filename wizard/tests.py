@@ -1,4 +1,4 @@
-"Tests for the form wizard"
+
 import mock
 import copy
 
@@ -8,6 +8,7 @@ from django.core import urlresolvers
 from django.template import Template
 from django.contrib import messages
 from django.contrib.auth.models import User
+
 import wizard
 
 class SampleStep(object):
@@ -162,6 +163,16 @@ class TestWizard(test.TestCase):
         my_wizard.handle_request(self.mock_request, current_step)
 
         self.assertEqual(current_step, my_wizard.steps[current_step]._current_step)
+
+    @mock.patch('wizard.Wizard.get_step_object_by_key')
+    def test_current_step_instance_returns_step_by_key(self, get_step):
+        step_key = "One"
+
+        my_wizard = wizard.Wizard('test:test2', self.steps)
+        my_wizard._current_step = step_key
+
+        self.assertEqual(get_step.return_value, my_wizard.current_step_object)
+        get_step.assert_called_once_with(step_key)
 
     def test_should_be_able_to_get_test_url(self):
         """
@@ -453,7 +464,7 @@ class TestWizard(test.TestCase):
 
         class DummyTestStep(TestStepOne):
             def template(self):
-                "dummy method that will display the results of the template args"
+                """dummy method that will display the results of the template args"""
                 return Template("""{% spaceless %}
                                 {{ sample }} {{ other }}
                                 {% endspaceless %}""")
@@ -500,7 +511,7 @@ class TestWizard(test.TestCase):
         self.assertEqual(302, response.status_code)
         self.assertEqual(response['Location'], '/test/second')
 
-    def test_should_allow_navigation_to_be_overwritten_for_not_advancing_form(self):
+    def test_allows_navigation_to_be_overwritten_for_not_advancing_form(self):
         """
         the wizard should allow you to "continue" to the next step
         """
@@ -514,14 +525,12 @@ class TestWizard(test.TestCase):
         self.assertEqual(302, response.status_code)
         self.assertEqual(response['Location'], '/test/first')
 
-    def test_should_return_step_number(self):
-        "should return the 1 based position for each step name"
+    def test_returns_one_based_step_number(self):
         self.wizard.initialize_steps()
         for step_number0, step_name in enumerate(self.steps):
             self.assertEqual(step_number0 + 1, self.wizard.get_step_number(step_name[0]))
 
-    def test_should_return_total_steps(self):
-        "returns total number of steps"
+    def test_return_total_number_of_steps(self):
         self.wizard.initialize_steps()
         self.assertEqual(len(self.steps), self.wizard.total_steps())
 
@@ -666,4 +675,14 @@ class TestWizard(test.TestCase):
         request = mock.Mock()
         wiz.handle_request(request, 'first')
         self.assertEqual(request, wiz.request)
+
+    def test_get_steps_returns_step_key_and_instantiated_steps(self):
+        wiz = wizard.Wizard('test:test3', self.steps)
+        wiz.initialize_steps()
+
+        zipped_steps = zip(self.steps, wiz.get_steps())
+        for declared_steps, instantiated_steps in zipped_steps:
+            self.assertEqual(declared_steps[0], instantiated_steps[0])
+            self.assertIsInstance(instantiated_steps[1], declared_steps[1])
+
 

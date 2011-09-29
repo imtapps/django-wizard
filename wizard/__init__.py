@@ -1,7 +1,6 @@
-"""
-these are the classes that make form wizards work
-"""
+
 import inspect
+
 from django import http
 from django.core import urlresolvers
 from django.template import RequestContext
@@ -11,31 +10,43 @@ from wizard import signals
 
 __all__ = ('PrereqMissing', 'SaveStepException', 'Wizard')
 
-__version__ = '0.1.10'
+__version__ = '0.2.3'
 
 class PrereqMissing(Exception):
-    "this is an exception that a WizardStep can raise in the event that a pervious step must first be completed"
+    """
+    A WizardStep should raise PrereqMissing when one step must
+    be completed before another but isn't.
+    """
+
     def __init__(self, step=None, request=None, message=None):
-        "a step class can be passed in - this is where the wizard will redirect the user"
+        """
+        When a step class is passed in, the wizard will redirect to
+        the given step.
+        """
         self.step = step
         self.prereq_message = message
         if request and message:
             messages.add_message(request, messages.ERROR, message)
 
 class SaveStepException(Exception):
-    """base class for an exception during the save method. This will let
-    us know we can't proceed to the next step and must re-show the current step."""
+    """
+    Base class for an exception during the save method.
+    Indicates we can't proceed to the next step and must re-display
+    the current step.
+    """
     pass
 
 class Wizard(object):
     """
-    this class will "wire" together multiple WizardStep objects and take care of the navigation between
-    WizardStep objects
+    Wires together multiple WizardStep objects and takes care
+    of the navigation among WizardStep objects
     """
+
     def __init__(self, base_url_name, steps, navigation_opts=None):
         """
-        a tuple of tuples of step key names, and step objects must be passed into the constructor
-        along with the base url name in the form of namespace:name for redirects
+        a tuple of tuples of step key names, and step objects must be
+        passed into the constructor along with the base url name in the
+        form of namespace:name for redirects
         """
         self.steps_callback = steps
         self.do_redirect = False
@@ -56,23 +67,32 @@ class Wizard(object):
             'wizard_next':1,
         }
 
+    @property
+    def current_step_object(self):
+        """
+        handle_request sets the current step, so you can't use
+        this property until after a request has been handled.
+        """
+        return self.get_step_object_by_key(self._current_step)
+
     def set_common_template_args(self, args):
         """
-        this will be a dictionary of additional things that you would like the wizard to pass through
-        to the template for each step in the wizard
+        A dictionary of additional items the wizard should give to the
+        template for each step.
         """
         self.template_args = args
 
     def set_step_init_args(self, *args, **kwargs):
         """
-        allow the wizard to pass *args and **kwargs into the constructor of each step
+        Arguments the wizard passes to the constructor of each step.
         """
         self.args = args
         self.kwargs = kwargs
 
     def set_redirect_args(self, *args, **kwargs):
         """
-        allow the wizard to pass *args and **kwargs into the url call to create the redirect link
+        Arguments the wizard passes to the url reverse function to create
+        the proper redirect url. Only use args or kwargs, not both.
         """
         if args and kwargs:
             raise ValueError("Don't mix *args and **kwargs, django's reverse() will not allow it!")
@@ -88,9 +108,8 @@ class Wizard(object):
 
     def handle_request(self, request, step=None):
         """
-        when the wizard object is called, with the request and a step it will route it to the
-        appropriate WizardStep and allow that step do to what it needs to do before navigating
-        to the next appropriate step
+        Main dispatch method. Figures out which step to go to for the
+        current request and which one to go to next.
         """
         self.request = request
         self._current_step = step
@@ -116,7 +135,7 @@ class Wizard(object):
             raise ValueError(step + " not found in wizard")
 
     def get_step_number(self, step):
-        "gets the 1 based step position"
+        """gets the 1 based step position"""
         return self.get_step_position(step) + 1
 
     def total_steps(self):
@@ -135,19 +154,12 @@ class Wizard(object):
 
     def get_steps(self):
         """
-        return a generator to allow iteration through a tuple of each step name and step object
+        Allows iteration through each step name and instantiated step object
+
+        Can be useful on a final step if you want to make do any sort of
+        validation on all the steps together.
         """
-        def generate_steps():
-            """
-            lazily return each step name and step object as a tuple
-
-            this is lazy because it will actually instantiate each step, which the
-            wizard shouldn't do unless it is absolutely nessisary
-            """
-            for (name, _) in self.steps_tuple:
-                yield (name, self.get_step_object_by_key(name))
-
-        return generate_steps()
+        return ((name, self.get_step_object_by_key(name)) for name, _ in self.steps_tuple)
 
     def get_step_object_by_key(self, key):
         step = self.steps.get(key)
