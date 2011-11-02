@@ -223,6 +223,7 @@ class Wizard(object):
 
         try:
             self.get_step_object_by_key(next_step).prereq()
+            signals.wizard_prereq.send(self, step_key=next_step)
             return next_step
         except PrereqMissing as exception:
             self.do_redirect = True
