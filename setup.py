@@ -16,7 +16,7 @@ TEST_REQUIREMENTS = [
 def do_setup():
     setup(
         name="django-wizard",
-        version='0.2.4',
+        version='0.2.5',
         author="Matthew J. Morrison",
         author_email="mattjmorrison@mattjmorrison.com",
         description="A wizard that helps to control page flow.",

@@ -666,22 +666,86 @@ class TestWizard(test.TestCase):
         wiz.handle_request(self.mock_request, 'first')
         send_postdisplay.assert_called_once_with(wiz, step_key='first')
 
-    @mock.patch('wizard.signals.wizard_prereq.send')
-    def test_sends_prereq_signal_in_handle_prereq(self, send_prereq):
+    @mock.patch('wizard.signals.wizard_post_prereq.send')
+    def test_sends_post_prereq_signal_in_prereq(self, send_post_prereq):
         wiz = wizard.Wizard('test:test3', self.steps)
         wiz.steps = dict(self.steps)
-        wiz.handle_prereq('fourth')
-        send_prereq.assert_called_once_with(wiz, step_key='fourth')
+        wiz._current_step = 'fourth'
+        wiz.current_step_object.prereq()
+        send_post_prereq.assert_called_once_with(wiz, step_key='fourth')
 
-    @mock.patch('wizard.signals.wizard_prereq.send')
-    def test_prereq_exceptions_are_caught_when_raised_by_prereq_signal(self, send_prereq):
-        send_prereq.side_effect = lambda *args, **kwargs:(e for e in [wizard.PrereqMissing])
+    @mock.patch('wizard.signals.wizard_pre_prereq.send')
+    def test_sends_pre_prereq_signal_in_prereq(self, send_pre_prereq):
         wiz = wizard.Wizard('test:test3', self.steps)
         wiz.steps = dict(self.steps)
-        try:
-            wiz.handle_prereq('fourth')
-        except wizard.PrereqMissing:
-            self.fail("Prereq should not have been raised")
+        wiz._current_step = 'fourth'
+        wiz.current_step_object.prereq()
+        send_pre_prereq.assert_called_once_with(wiz, step_key='fourth')
+
+    @mock.patch.object(TestStepFour, 'prereq', mocksignature=True)
+    @mock.patch('wizard.signals.wizard_post_prereq.send')
+    def test_does_not_send_post_prereq_signal_when_prereq_raises_exception(self, send_post_prereq, mock_prereq):
+        mock_prereq.side_effect = wizard.PrereqMissing
+
+        wiz = wizard.Wizard('test:test3', self.steps)
+        wiz.steps = dict(self.steps)
+        wiz._current_step = 'fourth'
+
+        with self.assertRaises(wizard.PrereqMissing):
+            wiz.current_step_object.prereq()
+        self.assertFalse(send_post_prereq.called)
+
+    @mock.patch.object(TestStepFour, 'prereq', mocksignature=True)
+    @mock.patch('wizard.signals.wizard_pre_prereq.send')
+    def test_should_still_send_pre_preq_signal_even_if_prereq_raises_exception(self, send_pre_prereq, mock_prereq):
+        mock_prereq.side_effect = wizard.PrereqMissing
+
+        wiz = wizard.Wizard('test:test3', self.steps)
+        wiz.steps = dict(self.steps)
+        wiz._current_step = 'fourth'
+
+        with self.assertRaises(wizard.PrereqMissing):
+            wiz.current_step_object.prereq()
+        self.assertTrue(send_pre_prereq.called)
+
+    def test_prereq_calls_original_prereq_defined_on_step(self):
+
+        wiz = wizard.Wizard('test:test3', self.steps)
+        wiz.steps = dict(self.steps)
+        wiz._current_step = 'fourth'
+
+        with mock.patch.object(TestStepFour, 'prereq', mocksignature=True) as original_prereq:
+            wiz.current_step_object.prereq()
+
+        original_prereq.assert_called_once_with(wiz.current_step_object)
+
+    def test_wraps_prereq_without_clobbering_name(self):
+
+        wiz = wizard.Wizard('test:test3', self.steps)
+        wiz.steps = dict(self.steps)
+        wiz._current_step = 'fourth'
+
+        self.assertEqual('prereq', wiz.current_step_object.prereq.__name__)
+
+    @mock.patch('wizard.signals.wizard_post_prereq.send')
+    def test_prereq_exceptions_are_not_caught_when_raised_by_post_prereq_signal(self, send_post_prereq):
+        send_post_prereq.side_effect = wizard.PrereqMissing
+        wiz = wizard.Wizard('test:test3', self.steps)
+        wiz.steps = dict(self.steps)
+        wiz._current_step = 'fourth'
+
+        with self.assertRaises(wizard.PrereqMissing):
+            wiz.current_step_object.prereq()
+
+    @mock.patch('wizard.signals.wizard_pre_prereq.send')
+    def test_prereq_exceptions_are_not_caught_when_raised_by_pre_prereq_signal(self, send_pre_prereq):
+        send_pre_prereq.side_effect = wizard.PrereqMissing
+        wiz = wizard.Wizard('test:test3', self.steps)
+        wiz.steps = dict(self.steps)
+        wiz._current_step = 'fourth'
+
+        with self.assertRaises(wizard.PrereqMissing):
+            wiz.current_step_object.prereq()
 
     def test_request_is_none_before_handle_request(self):
         wiz = wizard.Wizard('test:test3', self.steps)
@@ -701,5 +765,4 @@ class TestWizard(test.TestCase):
         for declared_steps, instantiated_steps in zipped_steps:
             self.assertEqual(declared_steps[0], instantiated_steps[0])
             self.assertIsInstance(instantiated_steps[1], declared_steps[1])
-
 

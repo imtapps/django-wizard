@@ -11,11 +11,10 @@ and the current step name (From the url)::
 
         def my_view(request, step):
             Wizard('new_wizard', [
-		('StepOne', mysteps.StepOne),
-		('StepTwo', mysteps.StepTwo),
-	    ])
-            return wizard.handle_request(request, step)
-
+            ('StepOne', mysteps.StepOne),
+            ('StepTwo', mysteps.StepTwo),
+        ])
+        return wizard.handle_request(request, step)
 
 The wizard also has a defaulted navigation_opts argument that can be passed in the __init__
 navigation options are a dictionary with a key of a string that will map to a field in
@@ -42,6 +41,15 @@ The view can also set a few additional things on the wizard:
             - use this to add stuff that will always be available in all of your wizard created
               templates
 
+The wizard will trigger the following signals:
+
+    * wizard.signals.wizard_pre_save
+    * wizard.signals.wizard_post_save
+    * wizard.signals.wizard_pre_display
+    * wizard.signals.wizard_post_display
+    * wizard.signals.wizard_pre_prereq
+    * wizard.signals.wizard_post_prereq
+
 A Step class is just an object that must define the following methods
 
 * display
@@ -58,11 +66,11 @@ A Step class is just an object that must define the following methods
 
 * prereq
     - only takes self as an argument and can raise a wizard.PrereqMissing when an error occurs in the page flow
-	- the __init__ accepts an optional step key, a request and a message
+    - the __init__ accepts an optional step key, a request and a message
 
-	- if the step key is provided, the wizard will redirect to that step
+    - if the step key is provided, the wizard will redirect to that step
 
-	- if a request and message are provided it will add the message to django's messaging framework
+    - if a request and message are provided it will add the message to django's messaging framework
 
 * SaveStepException is an exception that can be raised in the save method that the wizard know that the step could not be saved and needs to be repeated
 

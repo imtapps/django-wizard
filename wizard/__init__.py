@@ -5,12 +5,14 @@ from django import http
 from django.core import urlresolvers
 from django.template import RequestContext
 from django.contrib import messages
+from django.utils.functional import wraps
 
 from wizard import signals
 
 __all__ = ('PrereqMissing', 'SaveStepException', 'Wizard')
 
 __version__ = '0.2.3'
+
 
 class PrereqMissing(Exception):
     """
@@ -28,6 +30,7 @@ class PrereqMissing(Exception):
         if request and message:
             messages.add_message(request, messages.ERROR, message)
 
+
 class SaveStepException(Exception):
     """
     Base class for an exception during the save method.
@@ -35,6 +38,7 @@ class SaveStepException(Exception):
     the current step.
     """
     pass
+
 
 class Wizard(object):
     """
@@ -61,10 +65,10 @@ class Wizard(object):
         self._current_step = None
         self.template_args = None
         self.navigation_opts = navigation_opts or {
-            'wizard_save':0,
-            'wizard_continue':1,
-            'wizard_previous':-1,
-            'wizard_next':1,
+            'wizard_save': 0,
+            'wizard_continue': 1,
+            'wizard_previous': -1,
+            'wizard_next': 1,
         }
 
     @property
@@ -167,12 +171,25 @@ class Wizard(object):
             raise http.Http404
 
         if inspect.isclass(step):
-            self.steps[key] = self.instantiate_step(step)
-            self.steps[key]._key = key
-            self.steps[key]._wizard = self
-            self.steps[key]._current_step = self._current_step
+            step_instance = self.instantiate_step(step)
+            step_instance._key = key
+            step_instance._wizard = self
+            step_instance._current_step = self._current_step
+            step_instance.prereq = self.create_prereq(step_instance)
+            self.steps[key] = step_instance
 
         return self.steps[key]
+
+    def create_prereq(self, step):
+        orig_prereq = step.prereq
+
+        @wraps(step.prereq)
+        def wrapper_new_prereq():
+            signals.wizard_pre_prereq.send(self, step_key=step._key)
+            orig_prereq()
+            signals.wizard_post_prereq.send(self, step_key=step._key)
+
+        return wrapper_new_prereq
 
     def instantiate_step(self, step_class):
         """
@@ -196,7 +213,7 @@ class Wizard(object):
             self.url_kwargs['step'] = step
             return urlresolvers.reverse(self.base_url_name, kwargs=self.url_kwargs)
         elif self.url_args:
-            self.url_args += (step,)
+            self.url_args += (step, )
             return urlresolvers.reverse(self.base_url_name, args=self.url_args)
         else:
             return urlresolvers.reverse(self.base_url_name, kwargs={'step':step})
@@ -223,7 +240,6 @@ class Wizard(object):
 
         try:
             self.get_step_object_by_key(next_step).prereq()
-            signals.wizard_prereq.send(self, step_key=next_step)
             return next_step
         except PrereqMissing as exception:
             self.do_redirect = True
