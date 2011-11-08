@@ -1,4 +1,4 @@
-
+from django.dispatch import Signal
 import mock
 import copy
 
@@ -95,21 +95,16 @@ class TestWizard(test.TestCase):
         self.mock_request.method = 'GET'
         self.wizard.set_step_init_args(self.mock_request)
 
-        self._wizard_pre_save = copy.copy(wizard.signals.wizard_pre_save.receivers)
-        self._wizard_post_save = copy.copy(wizard.signals.wizard_post_save.receivers)
-        self._wizard_pre_display = copy.copy(wizard.signals.wizard_pre_display.receivers)
-        self._wizard_post_display = copy.copy(wizard.signals.wizard_post_display.receivers)
-
-        wizard.signals.wizard_pre_save.receivers = []
-        wizard.signals.wizard_post_save.receivers = []
-        wizard.signals.wizard_pre_display.receivers = []
-        wizard.signals.wizard_post_display.receivers = []
+        self._signals = {}
+        for attr_name in dir(wizard.signals):
+            attr = getattr(wizard.signals, attr_name)
+            if isinstance(attr, Signal):
+                self._signals[attr_name] = copy.copy(attr.receivers)
+                attr.receivers = []
 
     def tearDown(self):
-        wizard.signals.wizard_pre_save.receivers = self._wizard_pre_save
-        wizard.signals.wizard_post_save.receivers = self._wizard_post_save
-        wizard.signals.wizard_pre_display.receivers = self._wizard_pre_display
-        wizard.signals.wizard_post_display.receivers = self._wizard_post_display	
+        for attr_name, receivers in self._signals.items():
+            getattr(wizard.signals, attr_name).receivers = receivers
 
     def test_should_instantiate_step_classes_as_needed(self):
         """
