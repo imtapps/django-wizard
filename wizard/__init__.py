@@ -11,7 +11,7 @@ from wizard import signals
 
 __all__ = ('PrereqMissing', 'SaveStepException', 'Wizard')
 
-__version__ = '0.2.3'
+__version__ = '0.2.7'
 
 
 class PrereqMissing(Exception):

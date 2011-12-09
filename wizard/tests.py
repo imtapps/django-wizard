@@ -169,14 +169,6 @@ class TestWizard(test.TestCase):
         self.assertEqual(get_step.return_value, my_wizard.current_step_object)
         get_step.assert_called_once_with(step_key)
 
-    def test_should_be_able_to_get_test_url(self):
-        """
-        make sure that the tests can see the test urls
-        """
-        client = test.Client()
-        response = client.get('/test/step/')
-        self.assertEqual(200, response.status_code)
-
     def test_should_redirect_default_first_step(self):
         """
         the root url of the wizard should be able to determine what the first step is
