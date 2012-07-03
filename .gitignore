@@ -9,3 +9,6 @@ build/*
 
 jenkins_reports/*
 MANIFEST
+.coverage
+coverage.xml
+nosetests.xml
