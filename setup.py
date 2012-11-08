@@ -7,7 +7,7 @@ REQUIREMENTS = [
 ]
 
 TEST_REQUIREMENTS = [
-    'mock',
+    'mock==.0.8.0',
     'pep8',
     'pyflakes',
     'django_nose',
