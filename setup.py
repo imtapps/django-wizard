@@ -3,7 +3,7 @@ import re
 from distutils.core import Command, setup
 
 REQUIREMENTS = [
-    'django==1.4.5',
+    'django<1.5.0',
 ]
 
 TEST_REQUIREMENTS = [
