@@ -3,11 +3,11 @@ import re
 from distutils.core import Command, setup
 
 REQUIREMENTS = [
-    'django',
+    'django==1.4.5',
 ]
 
 TEST_REQUIREMENTS = [
-    'mock==.0.8.0',
+    'mock==0.8.0',
     'pep8',
     'pyflakes',
     'django_nose',
@@ -63,7 +63,7 @@ class PipDependencies(Command):
         return re.sub(re.compile(r'([<>])'), r'\\\1', command_line_deps)
 
     def run(self):
-        os.system("pip %s %s -i http://localhost:8888/simple/" % (self.pip_command, self.get_all_dependencies()))
+        os.system("pip %s %s" % (self.pip_command, self.get_all_dependencies()))
 
 class InstallDependencies(PipDependencies):
     pip_command = 'install'
