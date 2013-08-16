@@ -620,7 +620,7 @@ class TestWizard(test.TestCase):
         self.mock_request.method = 'POST'
         self.mock_request.POST = {}
         wiz.handle_request(self.mock_request, 'first')
-        send_presave.assert_called_once_with(wiz, step_key='first')
+        send_presave.assert_called_once_with(wiz, step_key='first', request=self.mock_request)
 
     @mock.patch('wizard.signals.wizard_post_save.send')
     def test_sends_post_save_signal_in_post(self, send_postsave):
@@ -629,7 +629,7 @@ class TestWizard(test.TestCase):
         self.mock_request.method = 'POST'
         self.mock_request.POST = {}
         wiz.handle_request(self.mock_request, 'first')
-        send_postsave.assert_called_once_with(wiz, step_key='first')
+        send_postsave.assert_called_once_with(wiz, step_key='first', request=self.mock_request)
 
     @mock.patch.object(TestStepOne, 'save', mock.Mock(side_effect=wizard.SaveStepException))
     @mock.patch('wizard.signals.wizard_post_save.send')
@@ -645,29 +645,31 @@ class TestWizard(test.TestCase):
     def test_sends_pre_display_signal_in_do_display(self, send_predisplay):
         wiz = wizard.Wizard('test:test3', self.steps)
         wiz.handle_request(self.mock_request, 'first')
-        send_predisplay.assert_called_once_with(wiz, step_key='first')
+        send_predisplay.assert_called_once_with(wiz, step_key='first', request=self.mock_request)
 
     @mock.patch('wizard.signals.wizard_post_display.send')
     def test_sends_post_display_signal_in_do_display(self, send_postdisplay):
         wiz = wizard.Wizard('test:test3', self.steps)
         wiz.handle_request(self.mock_request, 'first')
-        send_postdisplay.assert_called_once_with(wiz, step_key='first')
+        send_postdisplay.assert_called_once_with(wiz, step_key='first', request=self.mock_request)
 
     @mock.patch('wizard.signals.wizard_post_prereq.send')
     def test_sends_post_prereq_signal_in_prereq(self, send_post_prereq):
         wiz = wizard.Wizard('test:test3', self.steps)
+        wiz.request = self.mock_request
         wiz.steps = dict(self.steps)
         wiz._current_step = 'fourth'
         wiz.current_step_object.prereq()
-        send_post_prereq.assert_called_once_with(wiz, step_key='fourth')
+        send_post_prereq.assert_called_once_with(wiz, step_key='fourth', request=self.mock_request)
 
     @mock.patch('wizard.signals.wizard_pre_prereq.send')
     def test_sends_pre_prereq_signal_in_prereq(self, send_pre_prereq):
         wiz = wizard.Wizard('test:test3', self.steps)
+        wiz.request = self.mock_request
         wiz.steps = dict(self.steps)
         wiz._current_step = 'fourth'
         wiz.current_step_object.prereq()
-        send_pre_prereq.assert_called_once_with(wiz, step_key='fourth')
+        send_pre_prereq.assert_called_once_with(wiz, step_key='fourth', request=self.mock_request)
 
     @mock.patch.object(TestStepFour, 'prereq', mocksignature=True)
     @mock.patch('wizard.signals.wizard_post_prereq.send')

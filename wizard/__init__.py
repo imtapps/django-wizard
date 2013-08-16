@@ -185,9 +185,9 @@ class Wizard(object):
 
         @wraps(step.prereq)
         def wrapper_new_prereq():
-            signals.wizard_pre_prereq.send(self, step_key=step._key)
+            signals.wizard_pre_prereq.send(self, step_key=step._key, request=self.request)
             orig_prereq()
-            signals.wizard_post_prereq.send(self, step_key=step._key)
+            signals.wizard_post_prereq.send(self, step_key=step._key, request=self.request)
 
         return wrapper_new_prereq
 
@@ -223,9 +223,9 @@ class Wizard(object):
 
     def post(self, request, step):
         try:
-            signals.wizard_pre_save.send(self, step_key=step)
+            signals.wizard_pre_save.send(self, step_key=step, request=self.request)
             self.get_step_object_by_key(step).save()
-            signals.wizard_post_save.send(self, step_key=step)
+            signals.wizard_post_save.send(self, step_key=step, request=self.request)
         except SaveStepException:
             return self.render(request, self.do_display(step), step)
         else:
@@ -284,9 +284,9 @@ class Wizard(object):
 
     def do_display(self, step):
         step_object = self.get_step_object_by_key(step)
-        signals.wizard_pre_display.send(self, step_key=step)
+        signals.wizard_pre_display.send(self, step_key=step, request=self.request)
         data = step_object.display() or {}
-        signals.wizard_post_display.send(self, step_key=step)
+        signals.wizard_post_display.send(self, step_key=step, request=self.request)
         return self.add_wizard_data_to_template(data, step)
 
     def add_wizard_data_to_template(self, data, step):
